@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local data (large input and derived datasets)
+data/*
+!data/README.md
+
+# Local system / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Local outputs / models
+models/
+outputs/
