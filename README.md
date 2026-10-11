@@ -4,7 +4,7 @@ A reproducible machine learning project for forecasting hourly taxi pickup deman
 
 ## Research question
 
-**How accurately can we forecast the next hour's taxi pickups in each NYC taxi zone using information available at prediction time?**
+**How accurately can we forecast the next hour's taxi pickups in each NYC taxi zone using information available at prediction time, and which predictive signals provide robust out-of-sample improvements?**
 
 ## Data sources
 
