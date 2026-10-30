@@ -1,0 +1,8 @@
+# Install a PyTorch build appropriate for the target GPU/CUDA environment.
+# Verified Avon execution used torch 2.5.1+cu118.
+torch>=2.5
+numpy>=1.26
+pandas>=2.2
+pyarrow>=17.0
+geopandas>=1.0
+shapely>=2.0

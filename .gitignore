@@ -24,3 +24,32 @@ data/*
 # Local outputs / models
 models/
 outputs/
+
+# Machine-specific environments and training artifacts
+.venv-*/
+*.pth
+*.pt
+*.npz
+*.npy
+*.parquet
+*.out
+*.err
+
+# Local source datasets and generated artifacts
+/MTA_Subway_Entrances_and_Exits__2024_*.csv
+/taxi_zones/
+/tmp/
+/notebooks/cache/
+/reports/notebook_cleanup/
+/reports/figures/*
+!/reports/figures/.gitkeep
+/reports/research_report/*
+!/reports/research_report/reproduce_weighted_comparison.py
+!/reports/research_report/verify_saved_evidence.py
+
+# Superseded VM entry points (retained locally for experiment provenance)
+/DL_approach.py
+/train_2024.py
+/evaluate_2025.py
+/dl_run_utils.py
+/run_neural_pipeline.py
