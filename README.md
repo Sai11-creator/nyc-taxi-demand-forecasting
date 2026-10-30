@@ -1,54 +1,78 @@
 # NYC Taxi Demand Forecasting
 
-A reproducible machine learning project for forecasting hourly taxi pickup demand across New York City taxi zones, using real-world NYC TLC trip records.
+Forecasting the next hour's yellow taxi pickups across **263 New York City taxi zones**, using 2024 and 2025 NYC TLC records.
 
-## Research question
+The project investigates whether geographical neighbours, urban characteristics, and transport connections improve forecasts beyond a zone's own demand history. It compares temporal baselines, regression and XGBoost models, GRUs, and an ST-MGCN-inspired deep learning model.
 
-**How accurately can we forecast the next hour's taxi pickups in each NYC taxi zone using information available at prediction time, and which predictive signals provide robust out-of-sample improvements?**
+## Approach
 
-## Data sources
+The notebooks cover data cleaning, complete hourly demand panels (including zero-count hours), feature engineering, model development, and error analysis. Spatial information is represented through:
 
-- [Official NYC TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
-- [Yellow taxi trips — January 2024 (Parquet)](https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet)
-- [Taxi zone lookup (CSV)](https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv)
-- [Yellow taxi data dictionary](https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf)
+- **Geography:** taxi zones whose boundaries intersect.
+- **Functionality:** similarity between zones' restaurant and hotel counts.
+- **Transport connectivity:** zones sharing a daytime subway route.
 
-**Data is not committed to Git.** Download source files into `data/raw/`, and keep all intermediate and processed data under `data/`.
+The final deep learning model combines these three graphs with contextual temporal gating, recurrent encoders, and learned graph filters. It is inspired by [Geng et al.'s ST-MGCN](https://ojs.aaai.org/index.php/AAAI/article/view/4247), rather than an exact reproduction. The final encoder uses a vanilla RNN; earlier experiments use GRUs.
+
+Development trains on January–August 2024, validates on September, and tests on October–December. The selected configuration is then refitted on all of 2024 and evaluated on 2025. Predictions use the preceding observed demand, so this is **rolling one-hour-ahead forecasting**.
+
+## Data
+
+Inputs include [NYC TLC yellow taxi trip records and zone geography](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), historical OpenStreetMap restaurant/hotel counts, and the MTA's 2024 subway entrances and exits dataset.
+
+Datasets, trained weights, generated results, and reports are kept locally and are **not included in this repository**. The standalone deep learning script expects:
+
+```text
+data/DL_Dataset.parquet
+data/yellow_taxi_2025_features_neighbor_mean.parquet
+taxi_zones/taxi_zones.shp              # with the accompanying shapefile files
+MTA_Subway_Entrances_and_Exits__2024_20261021.csv
+```
+
+The notebooks document how the processed inputs and features are constructed. Some notebook paths reflect the original development machine and may need adjusting.
 
 ## Getting started
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # macOS / Linux
-pip install -r requirements.txt
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r requirements-dl.txt
 jupyter lab
 ```
 
-## Project roadmap
+Use a PyTorch build compatible with your machine's GPU/CUDA environment. Some exploratory notebooks also require XGBoost, `arch`, or OSMnx.
 
-1. **Data audit** — inspect schema, missingness, invalid timestamps, implausible trips, and unusual values. Quantify issues before filtering.
-2. **Exploratory analysis** — investigate hourly, weekly, and spatial seasonality; visualize variations by zone.
-3. **Target creation** — aggregate pickups by `(taxi_zone, hour)` and explicitly represent zero-count hours.
-4. **Validation and baselines** — split chronologically; compare seasonal naive forecasts and historical-average models.
-5. **Predictive models** — evaluate count regression and tree-based models, using only features known at forecast time.
-6. **Robustness** — test stability across months and spatial zones; assess uncertainty and distribution shift.
+## Deep learning on Avon
 
-## Initial milestone
+The consolidated script handles development, validation-based epoch selection, full-2024 refitting, and 2025 evaluation:
 
-Use only the **January 2024** yellow taxi file at first. We will work on:
-
-- dataset size and columns
-- missingness per column
-- distribution of trip durations and distances
-- invalid and suspicious records with counts and percentages
-- proposed cleaning rules and why each rule is justified
-
-
-## Repository structure
-
-```text
-notebooks/        exploratory notebooks
-src/              reusable data and modelling code
-reports/figures/  selected small plots for reports/README
-data/             locally stored raw/processed datasets (gitignored)
+```bash
+python avon_deep_learning.py --stage all
 ```
+
+You can also run `develop`, `refit`, or `evaluate` separately; see `python avon_deep_learning.py --help`. Results, learning histories, predictions, and checkpoints are written to `outputs/deep_learning/` by default.
+
+For Avon's GPU scheduler, submit from the project directory:
+
+```bash
+sbatch avon_deep_learning.sbatch
+```
+
+The job file defaults to `.venv-avon-new/bin/python`; set `TAXI_PYTHON` to use another environment. Evaluation records both the original window starting on 2 January 2025 and the complete year, using December 2024 history for the first day's predictions.
+
+## Repository guide
+
+| Location | Contents |
+|---|---|
+| `notebooks/` | Data preparation, baselines, spatial experiments, and neural development |
+| `notebooks/data_tools.py` | Shared data preparation and modelling helpers |
+| `avon_deep_learning.py` | Standalone deep learning workflow |
+| `avon_deep_learning.sbatch` | Avon GPU job configuration |
+| `requirements*.txt` | Base and deep learning dependencies |
+| `reports/research_report/*.py` | Saved-evidence verification and weighted-model reproduction |
+
+## Research report
+
+The detailed methodology, model comparisons, monthly and zone-level errors, uncertainty analysis, and limitations are documented in the research report. In the local project, it is available at `reports/research_report/taxi_demand_research_report.pdf`; the PDF and LaTeX sources are maintained separately from the code repository.
+
+The report distinguishes validation results from later-year evaluation and discusses why improvements in citywide RMSE do not necessarily translate into better absolute errors or better forecasts for every zone.
