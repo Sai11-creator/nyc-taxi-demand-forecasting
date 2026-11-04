@@ -410,14 +410,9 @@ def loader(inputs, targets, shuffle):
 def evaluate(model, batches, device, mean, std, output, name):
     model.eval()
     predictions, actuals = [], []
-    scaled_loss = 0
-    criterion = nn.MSELoss()
     with torch.no_grad():
         for inputs, targets in batches:
             prediction = model(inputs.to(device))
-            scaled_loss += criterion(
-                prediction, targets.to(device)
-            ).item() * inputs.size(0)
             predictions.append(prediction.cpu().numpy())
             actuals.append(targets.numpy())
     prediction = np.concatenate(predictions).astype(np.float64) * std + mean
@@ -435,10 +430,8 @@ def evaluate(model, batches, device, mean, std, output, name):
     )
     metrics = dict(
         mae=float(np.abs(error).mean()),
-        mse=float(np.square(error).mean()),
         rmse=float(np.sqrt(np.square(error).mean())),
         bias=float(error.mean()),
-        scaled_loss_rmse=float(np.sqrt(scaled_loss / len(batches.dataset)) * std),
         target_hours=len(actual),
         zones=263,
         zone_hours=int(actual.size),

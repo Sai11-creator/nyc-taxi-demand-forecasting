@@ -100,10 +100,9 @@ def main():
         row = {"group": label, "zone_name": zones.loc[int(label), "zone"] if label.isdigit() else label}
         for name, error in errors.items():
             row[name + "_mae"] = np.abs(error[mask]).mean()
-            row[name + "_mse"] = np.square(error[mask]).mean()
-            row[name + "_rmse"] = np.sqrt(row[name + "_mse"])
+            row[name + "_rmse"] = np.sqrt(np.square(error[mask]).mean())
         row["mae_reduction_pct"] = 100 * (1 - row["weights_mae"] / row["spatial_mae"])
-        row["mse_reduction_pct"] = 100 * (1 - row["weights_mse"] / row["spatial_mse"])
+        row["rmse_reduction_pct"] = 100 * (1 - row["weights_rmse"] / row["spatial_rmse"])
         metrics.append(row)
         daily = loss.loc[mask].groupby("date")[["AE", "SE"]].mean().sort_index()
         assert daily.index.equals(pd.date_range("2025-01-01", "2025-12-31"))

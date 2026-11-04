@@ -63,7 +63,7 @@ def main():
  pred=pd.read_parquet(r/'data/predictions_2025.parquet');frame=data[2025]['base'];check('Saved predictions have matching row count and no NaNs',len(pred)==len(frame) and pred.notna().all().all())
  y=frame.trip_count.to_numpy();errors={name:pred[col].to_numpy(dtype=float)-y for name,col in [('Basic','pred_basic'),('Spatial','pred_mean'),('Shock','pred_shock')]}
  full=[]
- for name,e in errors.items():full.append(dict(model=name,mae=float(np.abs(e).mean()),mse=float(np.square(e).mean()),rmse=float(np.sqrt(np.square(e).mean())),negative_predictions=int((pred[{'Basic':'pred_basic','Spatial':'pred_mean','Shock':'pred_shock'}[name]]<0).sum())))
+ for name,e in errors.items():full.append(dict(model=name,mae=float(np.abs(e).mean()),rmse=float(np.sqrt(np.square(e).mean())),negative_predictions=int((pred[{'Basic':'pred_basic','Spatial':'pred_mean','Shock':'pred_shock'}[name]]<0).sum())))
  pd.DataFrame(full).to_csv(out/'annual_saved_prediction_metrics.csv',index=False)
  rows=[]
  for month in range(1,13):
@@ -72,8 +72,9 @@ def main():
   row['rmse_improvement_pct']=100*(row['Basic_rmse']-row['Spatial_rmse'])/row['Basic_rmse'];row['mae_improvement_pct']=100*(row['Basic_mae']-row['Spatial_mae'])/row['Basic_mae'];rows.append(row)
  monthly_metrics=pd.DataFrame(rows);monthly_metrics.to_csv(out/'monthly_prediction_metrics.csv',index=False);check('Spatial improves both monthly metrics all 12 months',monthly_metrics.rmse_improvement_pct.gt(0).all() and monthly_metrics.mae_improvement_pct.gt(0).all())
  loss=pd.DataFrame({'date':frame[keys[0]].dt.normalize(),'zone':frame[keys[1]],'basic_se':errors['Basic']**2,'spatial_se':errors['Spatial']**2});loss['delta']=loss.basic_se-loss.spatial_se
- zone_metrics=loss.groupby('zone')[['basic_se','spatial_se','delta']].mean();zone_metrics['relative_pct']=100*zone_metrics.delta/zone_metrics.basic_se;zone_metrics['mean2024']=means;zone_metrics['name']=zones.zone;zone_metrics.sort_values('delta',ascending=False).to_csv(out/'zone_basic_spatial_metrics.csv')
+ zone_metrics=loss.groupby('zone')[['basic_se','spatial_se']].mean().apply(np.sqrt).rename(columns={'basic_se':'basic_rmse','spatial_se':'spatial_rmse'});zone_metrics['delta']=zone_metrics.basic_rmse-zone_metrics.spatial_rmse;zone_metrics['relative_pct']=100*zone_metrics.delta/zone_metrics.basic_rmse;zone_metrics['mean2024']=means;zone_metrics['name']=zones.zone;zone_metrics.sort_values('delta',ascending=False).to_csv(out/'zone_basic_spatial_metrics.csv')
  sorted_delta=zone_metrics.delta.sort_values(ascending=False);concentration={str(k):float(sorted_delta.iloc[:k].sum()/sorted_delta.sum()) for k in [5,10]};concentration['top5_ids']=list(map(int,sorted_delta.index[:5]));concentration['top10_ids']=list(map(int,sorted_delta.index[:10]));concentration['net_sum']=float(sorted_delta.sum());(out/'concentration.json').write_text(json.dumps(concentration,indent=2))
+ # Squared-loss/MSE differences below are retained for paired bootstrap summaries.
  boot=[];regimes=[]
  for label,members in [('All',list(ids))]+list(groups.items()):
   selected=loss.loc[loss.zone.isin(members)];daily=selected.groupby('date').delta.mean().sort_index();check(label+': bootstrap has 365 calendar days',daily.index.equals(pd.date_range('2025-01-01','2025-12-31')))

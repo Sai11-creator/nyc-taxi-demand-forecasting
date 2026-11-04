@@ -50,6 +50,7 @@ class RunnerCompatibilityTests(unittest.TestCase):
                     name,
                 )
                 self.assertEqual(result["rmse"], 0)
+                self.assertNotIn("mse", result)
                 self.assertTrue((output / metrics).is_file())
                 with np.load(output / predictions) as saved:
                     np.testing.assert_array_equal(saved["prediction"], targets)
