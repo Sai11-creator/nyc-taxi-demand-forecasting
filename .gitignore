@@ -42,7 +42,6 @@ outputs/
 /notebooks/cache/
 /reports/notebook_cleanup/
 /reports/figures/*
-!/reports/figures/.gitkeep
 /reports/research_report/*
 !/reports/research_report/reproduce_weighted_comparison.py
 !/reports/research_report/verify_saved_evidence.py
@@ -53,3 +52,9 @@ outputs/
 /evaluate_2025.py
 /dl_run_utils.py
 /run_neural_pipeline.py
+
+# Regenerable LaTeX build files
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
