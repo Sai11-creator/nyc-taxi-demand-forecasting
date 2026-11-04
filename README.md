@@ -44,18 +44,18 @@ Use a PyTorch build compatible with your machine's GPU/CUDA environment. Some ex
 
 ## Deep learning on Avon
 
-The consolidated script handles development, validation-based epoch selection, full-2024 refitting, and 2025 evaluation:
+The standalone `spatiotemporal_forecasting.py` script handles development, validation-based epoch selection, full-2024 refitting, and 2025 evaluation. It does not require the older development/refit scripts:
 
 ```bash
-python avon_deep_learning.py --stage all
+python spatiotemporal_forecasting.py --stage all
 ```
 
-You can also run `develop`, `refit`, or `evaluate` separately; see `python avon_deep_learning.py --help`. Results, learning histories, predictions, and checkpoints are written to `outputs/deep_learning/` by default.
+You can also run `develop`, `refit`, or `evaluate` separately; see `python spatiotemporal_forecasting.py --help`. Results, learning histories, predictions, and checkpoints are written to `outputs/deep_learning/` by default.
 
 For Avon's GPU scheduler, submit from the project directory:
 
 ```bash
-sbatch avon_deep_learning.sbatch
+sbatch spatiotemporal_forecasting.sbatch
 ```
 
 The job file defaults to `.venv-avon-new/bin/python`; set `TAXI_PYTHON` to use another environment. Evaluation records both the original window starting on 2 January 2025 and the complete year, using December 2024 history for the first day's predictions.
@@ -66,8 +66,8 @@ The job file defaults to `.venv-avon-new/bin/python`; set `TAXI_PYTHON` to use a
 |---|---|
 | `notebooks/` | Data preparation, baselines, spatial experiments, and neural development |
 | `notebooks/data_tools.py` | Shared data preparation and modelling helpers |
-| `avon_deep_learning.py` | Standalone deep learning workflow |
-| `avon_deep_learning.sbatch` | Avon GPU job configuration |
+| `spatiotemporal_forecasting.py` | Standalone deep learning workflow |
+| `spatiotemporal_forecasting.sbatch` | Avon GPU job configuration |
 | `requirements*.txt` | Base and deep learning dependencies |
 | `reports/research_report/*.py` | Saved-evidence verification and weighted-model reproduction |
 

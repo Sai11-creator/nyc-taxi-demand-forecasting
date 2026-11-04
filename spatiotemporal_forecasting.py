@@ -1,10 +1,10 @@
 """Standalone ST-MGCN workflow for Avon (no other project Python modules required).
 
 Run from the project directory after activating the Avon environment:
-    python avon_deep_learning.py --stage all
-    python avon_deep_learning.py --stage develop --epochs 100
-    python avon_deep_learning.py --stage refit --epochs 92
-    python avon_deep_learning.py --stage evaluate
+    python spatiotemporal_forecasting.py --stage all
+    python spatiotemporal_forecasting.py --stage develop --epochs 100
+    python spatiotemporal_forecasting.py --stage refit --epochs 92
+    python spatiotemporal_forecasting.py --stage evaluate
 
 Inputs: data/DL_Dataset.parquet, the 2025 neighbour-mean feature parquet,
         taxi_zones/taxi_zones.shp, and the 2024 MTA entrances CSV.
@@ -423,8 +423,15 @@ def evaluate(model, batches, device, mean, std, output, name):
     prediction = np.concatenate(predictions).astype(np.float64) * std + mean
     actual = np.concatenate(actuals).astype(np.float64) * std + mean
     error = prediction - actual
+    # Retain the filenames consumed by the existing report-analysis tools.
+    prediction_name = {
+        "original_2025": "original_2025_jan02_dec31",
+        "full_2025": "full_year_2025",
+    }.get(name, name)
     np.savez_compressed(
-        output / f"{name}_predictions.npz", prediction=prediction, actual=actual
+        output / f"{prediction_name}_predictions.npz",
+        prediction=prediction,
+        actual=actual,
     )
     metrics = dict(
         mae=float(np.abs(error).mean()),
@@ -437,7 +444,12 @@ def evaluate(model, batches, device, mean, std, output, name):
         zone_hours=int(actual.size),
         negative_predictions=int((prediction < 0).sum()),
     )
-    save_json(output, f"{name}_metrics.json", metrics)
+    metrics_name = (
+        "development_test_metrics.json"
+        if name == "development_oct_dec_2024"
+        else f"{name}_metrics.json"
+    )
+    save_json(output, metrics_name, metrics)
     return metrics
 
 
@@ -611,29 +623,70 @@ def main():
         parser.error("--threads must be positive")
     if args.stage == "all":
         # Separate processes preserve stage-specific random initialisation and free memory.
-        for stage in ["develop", "refit", "evaluate"]:
-            command = [
-                sys.executable,
-                str(Path(__file__).resolve()),
-                "--stage",
-                stage,
-                "--project-dir",
-                str(args.project_dir),
-                "--output-dir",
-                str(args.output_dir),
-                "--seed",
-                str(args.seed),
-                "--threads",
-                str(args.threads),
-                "--device",
-                args.device,
-            ]
-            if stage == "refit":
-                selection = json.loads(
-                    (args.output_dir / "development_selection.json").read_text()
+        manifest = dict(
+            status="running",
+            python=sys.version,
+            platform=platform.platform(),
+            torch=torch.__version__,
+            numpy=np.__version__,
+            pandas=pd.__version__,
+            seed=args.seed,
+            slurm_job_id=os.environ.get("SLURM_JOB_ID"),
+            source_sha256={
+                Path(__file__)
+                .name: hashlib.sha256(Path(__file__).read_bytes())
+                .hexdigest()
+            },
+            started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        )
+        save_json(args.output_dir, "run_manifest.json", manifest)
+        try:
+            for stage in ["develop", "refit", "evaluate"]:
+                command = [
+                    sys.executable,
+                    str(Path(__file__).resolve()),
+                    "--stage",
+                    stage,
+                    "--project-dir",
+                    str(args.project_dir),
+                    "--output-dir",
+                    str(args.output_dir),
+                    "--seed",
+                    str(args.seed),
+                    "--threads",
+                    str(args.threads),
+                    "--device",
+                    args.device,
+                ]
+                if stage == "refit":
+                    selection = json.loads(
+                        (args.output_dir / "development_selection.json").read_text()
+                    )
+                    command += ["--epochs", str(selection["best_epoch"])]
+                    manifest["refit_epochs_selected_on_validation"] = selection[
+                        "best_epoch"
+                    ]
+                manifest["current_stage"] = stage
+                save_json(args.output_dir, "run_manifest.json", manifest)
+                subprocess.run(command, check=True)
+                environment = json.loads(
+                    (args.output_dir / f"{stage}_environment.json").read_text()
                 )
-                command += ["--epochs", str(selection["best_epoch"])]
-            subprocess.run(command, check=True)
+                manifest["device"] = environment["device"]
+        except BaseException as error:
+            manifest.update(
+                status=(
+                    "interrupted" if isinstance(error, KeyboardInterrupt) else "failed"
+                ),
+                error=str(error),
+            )
+            save_json(args.output_dir, "run_manifest.json", manifest)
+            raise
+        manifest.update(
+            status="complete",
+            finished_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        )
+        save_json(args.output_dir, "run_manifest.json", manifest)
         return
     random.seed(args.seed)
     np.random.seed(args.seed)

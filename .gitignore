@@ -47,7 +47,7 @@ outputs/
 !/reports/research_report/reproduce_weighted_comparison.py
 !/reports/research_report/verify_saved_evidence.py
 
-# Superseded VM entry points (retained locally for experiment provenance)
+# Superseded VM entry points (archived locally for experiment provenance)
 /DL_approach.py
 /train_2024.py
 /evaluate_2025.py

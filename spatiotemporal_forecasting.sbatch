@@ -15,4 +15,4 @@ cd "${SLURM_SUBMIT_DIR}"
 # Override TAXI_PYTHON when using a different Avon virtual environment.
 TAXI_PYTHON="${TAXI_PYTHON:-$PWD/.venv-avon-new/bin/python}"
 export MPLBACKEND=Agg
-srun "$TAXI_PYTHON" -u avon_deep_learning.py --stage all --device cuda
+srun "$TAXI_PYTHON" -u spatiotemporal_forecasting.py --stage all --device cuda
